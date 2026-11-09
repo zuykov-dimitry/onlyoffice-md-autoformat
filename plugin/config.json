@@ -1,0 +1,38 @@
+{
+  "name": "Markdown autoformat",
+  "nameLocale": {
+    "ru": "Markdown-автоформат"
+  },
+  "guid": "asc.{114F28ED-672A-4640-A6B2-8ED0E9D242CB}",
+  "version": "0.1.0",
+  "minVersion": "9.0.0",
+  "variations": [
+    {
+      "description": "Type markdown in docx and get formatting as you type, Google-Docs-style: # headings, **bold**, *italic*, ~~strike~~, `code`, ``` code blocks, [text](url) links.",
+      "descriptionLocale": {
+        "ru": "Печатайте markdown в docx и получайте форматирование на лету, как в Google Docs: заголовки #, **жирный**, *курсив*, ~~зачёркнутый~~, `код`, ``` блоки кода, ссылки [текст](url)."
+      },
+      "url": "index.html",
+      "icons": "resources/%theme-type%(light|dark)/icon%scale%(default).png",
+      "isViewer": false,
+      "EditorsSupport": ["word"],
+      "isVisual": true,
+      "isModal": false,
+      "isInsideMode": true,
+      "isUpdateOleOnResize": false,
+      "initDataType": "none",
+      "events": ["onParagraphText"],
+      "store": {
+        "background": {
+          "light": "#1E2A32",
+          "dark": "#1E2A32"
+        },
+        "icons": {
+          "light": "resources/store/icons",
+          "dark": "resources/store/icons"
+        },
+        "categories": ["work"]
+      }
+    }
+  ]
+}
