@@ -29,6 +29,25 @@
 «**test** » превращается в жирный «test», но то, что напечатано после него —
 обычное.
 
+## Вставка из Markdown (v0.2.0)
+
+Для целых документов есть второй путь — правый клик в документе →
+**Вставить из Markdown** (или откройте окно плагина и перейдите на вкладку
+Insert Markdown):
+
+1. Вставьте Markdown в текстовое поле (или нажмите **Открыть .md…** и выберите
+   файл; из буфера обмена поле заполняется автоматически, если редактор
+   разрешает чтение);
+2. Нажмите **Вставить** — содержимое появится в позиции курсора одной
+   операцией: настоящие таблицы, списки, гиперссылки, инлайн-код, блоки кода и
+   цитаты; одна точка Ctrl+Z.
+
+Работает на vendored [markdown-it](https://github.com/markdown-it/markdown-it)
+(MIT, офлайн); сырой HTML в исходном Markdown отключён для безопасности.
+Ченджлог на 270 КБ с таблицей на 640 строк и 636 ссылками вставляется за
+секунды. Позицию пункта в контекстном меню выбирает редактор (пункты плагинов
+группируются); та же команда всегда доступна в окне плагина.
+
 Списки (`- `, `1. `) — не дублируем: встроенный AutoFormat редактора создаёт
 маркированный список по `- `/`* ` и нумерованный по `1. `/`1) ` (подтверждено
 живой проверкой 02.10.2026, Document Server 9.4.0; плагин списки не трогает и
@@ -309,8 +328,8 @@ sudo supervisorctl restart all   # или: docker restart <DS-контейнер
 
 ```bash
 python3 tools/make-icons.py   # иконки
-node --test tests/rules.test.js
-bash build.sh                 # dist/md-autoformat.zip
+node --test tests/rules.test.js tests/md-render.test.js
+bash build.sh                 # dist/md-autoformat.zip + dist/md-autoformat.plugin
 ```
 
 Структура: `plugin/scripts/rules.js` — чистый сканер (UMD, тестируется в node),
@@ -320,3 +339,10 @@ bash build.sh                 # dist/md-autoformat.zip
 ## Тестовый файл
 
 Тренироваться можно на документе: https://cloud.trueconf.com/f/808700
+
+## Сторонние компоненты
+
+- `sdk-v1/` — хелперы SDK плагинов ONLYOFFICE (`plugins.js`, `plugins-ui.js`),
+  © Ascensio System SIA, AGPL-3.0 (загружаются с Document Server или
+  официального CDN в рантайме).
+- `plugin/vendor/markdown-it.min.js` — [markdown-it](https://github.com/markdown-it/markdown-it), MIT.

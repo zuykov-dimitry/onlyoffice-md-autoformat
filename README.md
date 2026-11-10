@@ -30,6 +30,25 @@ After a conversion the text you type next continues with the SURROUNDING
 text's format, not the converted span's (Google-Docs-style): «**test** »
 converts to a bold «test», and what you type after it is plain.
 
+## Paste from Markdown (v0.2.0)
+
+For whole documents there is a second path — right-click in the document →
+**Paste from Markdown** (or open the plugin window and switch to the Insert
+Markdown tab):
+
+1. Paste your Markdown into the text area (or click **Open .md…** and pick a
+   file; the clipboard prefills the area automatically when the editor allows
+   reading it);
+2. Press **Insert** — the content materialises at the caret in one operation
+   with real tables, lists, hyperlinks, inline code, code blocks and
+   blockquotes, and a single undo point.
+
+Powered by a vendored [markdown-it](https://github.com/markdown-it/markdown-it)
+(MIT, works offline); raw HTML in the source Markdown is disabled for safety.
+A 270 KB changelog with a 640-row table and 636 links inserts in seconds.
+The context menu position is chosen by the editor (plugin items are grouped);
+the same command is always available from the plugin window.
+
 Lists (`- `, `1. `) are deliberately not duplicated: the editor's built-in
 AutoFormat already creates bulleted lists from `- `/`* ` and numbered lists
 from `1. `/`1) `. The plugin does not touch lists and works inside list items.
@@ -127,16 +146,26 @@ participant toggles their own plugin independently.
 
 ```bash
 python3 tools/make-icons.py   # icons
-node --test tests/rules.test.js
+node --test tests/rules.test.js tests/md-render.test.js
 bash build.sh                 # dist/md-autoformat.zip + dist/md-autoformat.plugin
 ```
 
 Structure: `plugin/scripts/rules.js` — a pure scanner (UMD, tested in node),
 `plugin/scripts/engine.js` — polling of the paragraph under the cursor and
-mutations via `callCommand`, `plugin/scripts/ui.js` — the settings window.
+mutations via `callCommand`, `plugin/scripts/md-render.js` — the
+Markdown → HTML renderer for Paste from Markdown, `plugin/scripts/ui.js` —
+the settings window.
 
 The detailed (Russian) version history lives in [CHANGELOG.md](CHANGELOG.md)
 and in [README.ru.md](README.ru.md).
+
+## Third-party components
+
+- `sdk-v1/` — ONLYOFFICE plugin SDK helpers (`plugins.js`, `plugins-ui.js`),
+  © Ascensio System SIA, AGPL-3.0 (loaded from the Document Server or the
+  official CDN at runtime).
+- `plugin/vendor/markdown-it.min.js` —
+  [markdown-it](https://github.com/markdown-it/markdown-it), MIT.
 
 ## License
 

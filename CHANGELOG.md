@@ -1,5 +1,21 @@
 # Change Log
 
+## 0.2.0
+
+* New: **Paste from Markdown**. Right-click in the document → «Paste from
+  Markdown» (also available as a button in the plugin window): paste or open a
+  `.md` file, press Insert — the whole content materialises at the caret in
+  ONE operation: headings, real tables, real lists, hyperlinks, inline code,
+  code blocks and blockquotes. One undo point. A 270 KB changelog (a 640-row
+  table with 636 links) inserts in seconds instead of minutes of line-by-line
+  conversion.
+* Powered by a vendored markdown-it (MIT, works offline) — full CommonMark
+  plus tables. Raw HTML in the source Markdown is disabled (html: false) —
+  pasted content cannot inject markup into the document.
+* Pasted content without explicit styles inherits the document's default
+  formatting (verified on DS 10.0.2).
+* The context menu item and the dialog are localized (en/ru).
+
 ## 0.1.1
 
 * Fixed: `[text](url)` now actually creates a hyperlink. The SDK's

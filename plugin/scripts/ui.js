@@ -11,6 +11,13 @@
 	var aboutBtn = document.getElementById("about-btn");
 	var mainView = document.getElementById("main-view");
 	var aboutView = document.getElementById("about-view");
+	var insertView = document.getElementById("insert-md-view");
+	var mdInput = document.getElementById("md-input");
+	var mdFile = document.getElementById("md-file");
+	var mdFileLabel = document.getElementById("md-file-label");
+	var insertBtn = document.getElementById("insert-btn");
+	var insertStatus = document.getElementById("insert-status");
+	var insertBack = document.getElementById("insert-back");
 
 	function describe(kind) {
 		var map = {
@@ -57,8 +64,28 @@
 			// answerable at a glance
 			var versionEl = document.getElementById("plugin-version");
 			if (versionEl) {
-				versionEl.textContent = "v" + (window.Asc.plugin.info.version || "0.1.1");
+				versionEl.textContent = "v" + (window.Asc.plugin.info.version || "0.2.0");
 			}
+			// localize the v0.2.0 Insert Markdown view
+			insertBtn.textContent = L.insert;
+			mdFileLabel.textContent = L.openFile;
+			insertBack.textContent = L.back;
+			mdInput.placeholder = L.placeholder;
+			// v0.2.0: "Paste from Markdown" in the editor context menu. The
+			// item id doubles as the event name for attachContextMenuClickEvent.
+			try {
+				if (typeof window.Asc.plugin.executeMethod === "function") {
+					window.Asc.plugin.executeMethod("AddContextMenuItem", [{
+						guid: window.Asc.plugin.guid,
+						items: [{ id: "onPasteMarkdownClick", text: L.menuItem, items: [] }]
+					}]);
+				}
+				if (typeof window.Asc.plugin.attachContextMenuClickEvent === "function") {
+					window.Asc.plugin.attachContextMenuClickEvent("onPasteMarkdownClick", function () {
+						showInsertView(true);
+					});
+				}
+			} catch (e) { /* the context menu is optional */ }
 		};
 
 		// The engine must not probe ranges before the document is ready:
@@ -77,7 +104,7 @@
 		// window chrome cannot deliver for).
 		aboutBtn.addEventListener("click", function () {
 			var isRu = /[?&]lang=ru/.test(window.location.search || "");
-			var v = (window.Asc.plugin.info && window.Asc.plugin.info.version) || "0.1.1";
+			var v = (window.Asc.plugin.info && window.Asc.plugin.info.version) || "0.2.0";
 			document.getElementById("about-title").textContent = isRu
 				? "Markdown-автоформат"
 				: "Markdown autoformat";
@@ -96,13 +123,29 @@
 			document.getElementById("about-back").textContent = isRu
 				? "← Назад"
 				: "← Back";
-			mainView.style.display = "none";
-			aboutView.style.display = "";
+			showView("about");
 		});
 
 		document.getElementById("about-back").addEventListener("click", function () {
-			aboutView.style.display = "none";
-			mainView.style.display = "";
+			showView("main");
+		});
+
+		insertBtn.addEventListener("click", doInsert);
+		insertBack.addEventListener("click", function () {
+			showView("main");
+		});
+		mdFile.addEventListener("change", function () {
+			var f = mdFile.files && mdFile.files[0];
+			if (!f) {
+				return;
+			}
+			var reader = new FileReader();
+			reader.onload = function () {
+				mdInput.value = String(reader.result || "");
+				setInsertStatus(f.name + ": " + L.fileLoaded);
+			};
+			reader.readAsText(f);
+			mdFile.value = ""; // allow re-selecting the same file
 		});
 
 		convertBtn.addEventListener("click", function () {
@@ -119,6 +162,91 @@
 
 	function onStatus(st) {
 		render(st);
+	}
+
+	// v0.2.0: the "Paste from Markdown" view. The editor UI language comes
+	// from ?lang= (same pattern as the About view).
+	var langRu = /[?&]lang=ru/.test(window.location.search || "");
+	var L = langRu ? {
+		insert: "Вставить",
+		openFile: "Открыть .md…",
+		back: "← Назад",
+		placeholder: "Вставьте или напечатайте Markdown здесь…",
+		empty: "Нечего вставлять: текст пуст",
+		inserting: "вставка…",
+		inserted: "вставлено",
+		insertFailed: "ошибка вставки",
+		fileLoaded: "файл загружен",
+		menuItem: "Вставить из Markdown"
+	} : {
+		insert: "Insert",
+		openFile: "Open .md…",
+		back: "← Back",
+		placeholder: "Paste or type Markdown here…",
+		empty: "Nothing to insert: the text is empty",
+		inserting: "inserting…",
+		inserted: "inserted",
+		insertFailed: "insert failed",
+		fileLoaded: "file loaded",
+		menuItem: "Paste from Markdown"
+	};
+
+	function showView(name) {
+		mainView.style.display = name === "main" ? "" : "none";
+		aboutView.style.display = name === "about" ? "" : "none";
+		insertView.style.display = name === "insert-md" ? "" : "none";
+	}
+
+	function setInsertStatus(msg, isErr) {
+		insertStatus.textContent = msg || "";
+		insertStatus.className = isErr ? "err" : "";
+	}
+
+	// One PasteHtml = one undo point; the whole document materialises at the
+	// caret (tables, lists, links included — verified on DS 10.0.2).
+	function doInsert() {
+		var src = mdInput.value;
+		if (!src.trim()) {
+			setInsertStatus(L.empty, true);
+			return;
+		}
+		setInsertStatus(L.inserting);
+		var html;
+		try {
+			html = window.MdAutoformatRender.renderMd(src);
+		} catch (e) {
+			setInsertStatus("render: " + e.message, true);
+			return;
+		}
+		window.Asc.plugin.executeMethod("PasteHtml", [html], function (res) {
+			if (res === true || res === undefined || res === null) {
+				mdInput.value = "";
+				setInsertStatus(L.inserted);
+			} else {
+				setInsertStatus(L.insertFailed + " (" + res + ")", true);
+			}
+		});
+	}
+
+	function showInsertView(fromMenu) {
+		showView("insert-md");
+		if (fromMenu && typeof window.Asc.plugin.executeMethod === "function") {
+			try {
+				window.Asc.plugin.executeMethod("ShowWindow", ["iframe_" + window.Asc.plugin.guid, 0]);
+			} catch (e) { /* older builds: the window is already visible */ }
+		}
+		// Prefill from the clipboard when the editor lets us read it: the
+		// textarea stays the source of truth, a denied permission is fine.
+		if (!mdInput.value && navigator.clipboard && typeof navigator.clipboard.readText === "function") {
+			try {
+				navigator.clipboard.readText().then(function (t) {
+					if (t && !mdInput.value) {
+						mdInput.value = t;
+					}
+				}).catch(function () { /* denied — the user pastes manually */ });
+			} catch (e) { /* denied — the user pastes manually */ }
+		}
+		mdInput.focus();
 	}
 
 	// The editor SDK (plugins.js) must be loaded before Asc.plugin exists:

@@ -71,6 +71,33 @@
         #about-view .back {
             margin-top: 4px;
         }
+        #insert-md-view .row {
+            margin-bottom: 8px;
+        }
+        #insert-md-view .file-label {
+            cursor: pointer;
+            user-select: none;
+            text-decoration: underline;
+        }
+        #insert-status {
+            min-height: 16px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        #insert-status.err { color: #b00020; }
+        #md-input {
+            width: 100%;
+            box-sizing: border-box;
+            height: 180px;
+            resize: vertical;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: pre;
+        }
+        #insert-md-view .back {
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
@@ -102,9 +129,21 @@
         <div class="company" id="about-company"></div>
         <button class="back" id="about-back">← Back</button>
     </div>
+    <div id="insert-md-view" style="display: none;">
+        <div class="row">
+            <button id="insert-btn">Insert</button>
+            <label class="file-label" for="md-file" id="md-file-label">Open .md…</label>
+            <input type="file" id="md-file" accept=".md,.markdown,.txt" style="display: none;" />
+            <button class="back" id="insert-back">← Back</button>
+        </div>
+        <div id="insert-status"></div>
+        <textarea id="md-input" rows="12" spellcheck="false"></textarea>
+    </div>
 
-    <script type="text/javascript" src="scripts/rules.js?v=15"></script>
-    <script type="text/javascript" src="scripts/engine.js?v=15"></script>
-    <script type="text/javascript" src="scripts/ui.js?v=15"></script>
+    <script type="text/javascript" src="vendor/markdown-it.min.js"></script>
+    <script type="text/javascript" src="scripts/rules.js?v=16"></script>
+    <script type="text/javascript" src="scripts/engine.js?v=16"></script>
+    <script type="text/javascript" src="scripts/md-render.js?v=16"></script>
+    <script type="text/javascript" src="scripts/ui.js?v=16"></script>
 </body>
 </html>
