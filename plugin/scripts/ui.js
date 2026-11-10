@@ -57,7 +57,7 @@
 			// answerable at a glance
 			var versionEl = document.getElementById("plugin-version");
 			if (versionEl) {
-				versionEl.textContent = "v" + (window.Asc.plugin.info.version || "0.1.0");
+				versionEl.textContent = "v" + (window.Asc.plugin.info.version || "0.1.1");
 			}
 		};
 
@@ -77,7 +77,7 @@
 		// window chrome cannot deliver for).
 		aboutBtn.addEventListener("click", function () {
 			var isRu = /[?&]lang=ru/.test(window.location.search || "");
-			var v = (window.Asc.plugin.info && window.Asc.plugin.info.version) || "0.1.0";
+			var v = (window.Asc.plugin.info && window.Asc.plugin.info.version) || "0.1.1";
 			document.getElementById("about-title").textContent = isRu
 				? "Markdown-автоформат"
 				: "Markdown autoformat";

@@ -1,5 +1,22 @@
 # Change Log
 
+## 0.1.1
+
+* Fixed: `[text](url)` now actually creates a hyperlink. The SDK's
+  `AddHyperlink` silently no-ops inside the plugin sandbox on all web builds
+  (it returns null — verified on ONLYOFFICE Docs 10.0.2); the plugin now
+  selects the converted span in the editor and pastes an `<a>` HTML fragment
+  over it from the plugin side (`PasteHtml`), which reliably produces the
+  hyperlink.
+* Fixed: text typed right after a conversion no longer continues the
+  converted span's format. The caret is now parked at the start of the next
+  real character after the span, so typing continues with the SURROUNDING
+  text's format — Google-Docs behaviour («**test** » → typing after «test»
+  stays plain).
+* Fixed: paragraph-mark variants across builds (`"\r"` vs `"\r\n"`) are
+  normalized before the trigger check, so a conversion can no longer fire
+  the instant the closing marker is typed without the space/Enter trigger.
+
 ## 0.1.0
 
 * Initial public release.

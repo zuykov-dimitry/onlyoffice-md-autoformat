@@ -178,12 +178,12 @@
 	// A fence marker line is "```" plus an optional language name and
 	// NOTHING else — "``` text" stays plain text (item 4).
 	function isFenceMarker(text) {
-		var s = String(text || "").replace(/\r\n$/, "");
+		var s = String(text || "").replace(/[\r\n]+$/, "");
 		return /^```[^\s\r\n]*$/.test(s);
 	}
 
 	function fenceMarkerLen(text) {
-		var s = String(text || "").replace(/\r\n$/, "");
+		var s = String(text || "").replace(/[\r\n]+$/, "");
 		var m = /^```[^\s\r\n]*/.exec(s);
 		return m ? m[0].length : 3;
 	}
@@ -229,7 +229,7 @@
 				return { ok: false, stage: "fence-index" };
 			}
 			var norm = function (s) {
-				return String(s || "").replace(/\r\n$/, "");
+				return String(s || "").replace(/[\r\n]+$/, "");
 			};
 			var i, p, full;
 			for (i = f.from; i <= f.to; i++) {
@@ -401,14 +401,18 @@
 					return;
 				}
 				state.eventMode = true;
+				// v0.1.1: the paragraph mark comes back in build-specific
+				// variants ("\r\n", "\r", "") — normalize once so the
+				// empty-paragraph signal and the prefilter behave the same
+				// on every build.
+				var evText = String(data.text).replace(/[\r\n]+$/, "");
 				// v0.1.3: an EMPTY event text is the "Enter pressed" signal
 				// (the caret moved to the new empty paragraph; the marker
-				// sits in the previous one). The editor may deliver the
-				// paragraph mark as "\r\n" instead of "" — accept both.
-				// Non-empty events clear the signal: a click never fires an
-				// event, so only a real Enter can raise it, and typing in
-				// the new paragraph cancels a stale one.
-				if (data.text === "" || data.text === "\r\n") {
+				// sits in the previous one). Non-empty events clear the
+				// signal: a click never fires an event, so only a real Enter
+				// can raise it, and typing in the new paragraph cancels a
+				// stale one.
+				if (evText === "") {
 					state.pendingEnter = true;
 				} else {
 					state.pendingEnter = false;
@@ -421,7 +425,7 @@
 				// paragraph). The event carries eventMode=true; the poll
 				// clears it, so a mouse click into an empty paragraph can
 				// never trigger that conversion.
-				if (data.text !== "" && data.text !== "\r\n" && !MARKDOWN_CHARS.test(data.text)) {
+				if (evText !== "" && !MARKDOWN_CHARS.test(evText)) {
 					return;
 				}
 				scheduleScan();
@@ -534,14 +538,16 @@
 					sn = "";
 				}
 				// v0.1.3: GetText() in the live API ALWAYS ends with the
-				// paragraph mark "\r\n" — even while the user is still
-				// typing and Enter was never pressed. Feeding that raw text
-				// to the rules made closerOk see a "finished" paragraph, so
-				// "**test**" converted the instant its last character was
-				// typed (no trailing space, no Enter). Strip the mark here;
-				// the "Enter finishes the marker" case is handled separately
-				// in planAndApply via the empty-paragraph signal.
-				var text = String(p.GetText() || "").replace(/\r\n$/, "");
+				// paragraph mark — "\r\n" on the web builds, other variants
+				// are possible on other builds (v0.1.1 normalizes them all)
+				// — even while the user is still typing and Enter was never
+				// pressed. Feeding that raw text to the rules made closerOk
+				// see a "finished" paragraph, so "**test**" converted the
+				// instant its last character was typed (no trailing space,
+				// no Enter). Strip the mark here; the "Enter finishes the
+				// marker" case is handled separately in planAndApply via
+				// the empty-paragraph signal.
+				var text = String(p.GetText() || "").replace(/[\r\n]+$/, "");
 				var out = { ok: true, text: text, style: sn };
 				// fence state comes from the neighbouring paragraphs: find
 				// the current paragraph's index, then collect every fence
@@ -591,7 +597,7 @@
 						out.curIndex = curIdx;
 						out.paraId = pid;
 						if (curIdx > 0) {
-							out.prevText = String(paras[curIdx - 1].GetText() || "").replace(/\r\n$/, "");
+							out.prevText = String(paras[curIdx - 1].GetText() || "").replace(/[\r\n]+$/, "");
 							try {
 								var pst = paras[curIdx - 1].GetStyle();
 								out.prevStyle = pst ? pst.GetName() : "";
@@ -803,7 +809,33 @@
 				if (at < 0) {
 					return { ok: false, stage: "caret-inner" };
 				}
-				var endPos = p.GetRange(at, at + len).GetEndPos();
+				// v0.1.1: park the caret at the START of the next real
+				// character after the span — the marker deletes leave empty
+				// slots, so scan forward past them; when the span ends the
+				// paragraph, the first "character" found is the paragraph
+				// mark ("\r\n") and its start is the end-of-line boundary.
+				// The old GetEndPos() of the inner range parked the caret on
+				// the boundary after the FORMATTED run, where the editor
+				// kept typing with the span's format (bold/italic/code) —
+				// "testX" came out bold. From the next real character's
+				// boundary the editor continues with the SURROUNDING run's
+				// format instead — Google-Docs behaviour ("**test** " →
+				// typing after "test" stays plain). Verified live on
+				// DS 10.0.2 (playground): mid-paragraph and end-of-paragraph
+				// spans both type plain after this change.
+				var b = -1;
+				for (var k2 = at + len; k2 <= at + len + 12; k2++) {
+					try {
+						var ch = p.GetRange(k2, k2 + 1).GetText();
+						if (ch) {
+							b = k2;
+							break;
+						}
+					} catch (e) {
+						/* probe failed, keep scanning */
+					}
+				}
+				var endPos = b >= 0 ? p.GetRange(b, b + 1).GetStartPos() : p.GetRange(at, at + len).GetEndPos();
 				doc.MoveCursorToPos(endPos);
 				return { ok: true };
 			} catch (e) {
@@ -986,7 +1018,7 @@
 					} catch (e) {
 						sn = "";
 					}
-					return { ok: true, text: String(p.GetText() || "").replace(/\r\n$/, ""), style: sn };
+					return { ok: true, text: String(p.GetText() || "").replace(/[\r\n]+$/, ""), style: sn };
 				} catch (e) {
 					return { ok: false, error: e.message };
 				}
@@ -1013,7 +1045,7 @@
 					} catch (e) {
 						sn = "";
 					}
-					return { ok: true, text: String(p.GetText() || "").replace(/\r\n$/, ""), style: sn };
+					return { ok: true, text: String(p.GetText() || "").replace(/[\r\n]+$/, ""), style: sn };
 				} catch (e) {
 					return { ok: false, error: e.message };
 				}
@@ -1084,7 +1116,7 @@
 					}
 					var text = Asc.scope.text;
 					var item = Asc.scope.item;
-					if (String(p.GetText() || "").replace(/\r\n$/, "") !== text) {
+					if (String(p.GetText() || "").replace(/[\r\n]+$/, "") !== text) {
 						return { ok: false, stage: "changed" };
 					}
 					// fresh ruler for the CURRENT paragraph state: positions
@@ -1298,9 +1330,15 @@
 					});
 					return;
 				}
-				// v0.1.3: the hyperlink needs its own command — AddHyperlink
-				// no-ops right after the marker deletes in the same command
-				// (same SDK quirk as SetColor/SetShd for code spans).
+				// v0.1.1: AddHyperlink no-ops inside callCommand on ALL web
+				// builds (returns null — its internal gate requires an
+				// editor selection state the sandbox cannot provide; even
+				// Select() in the same or a previous command does not help,
+				// verified live on DS 10.0.2). Workaround: select the span
+				// in the sandbox — the LIVE selection follows it — and
+				// paste an <a> HTML fragment over the selection from the
+				// plugin side via PasteHtml. Verified live: the hyperlink
+				// appears in the model.
 				if (res && res.ok && res.linkFormat) {
 					Asc.scope.fmt = { inner: item.inner, url: res.url, targetIndex: Asc.scope.targetIndex };
 					callCommand(buildCommand(function () {
@@ -1312,7 +1350,6 @@
 								return { ok: false, stage: "paragraph" };
 							}
 							var inner = Asc.scope.fmt.inner;
-							var url = Asc.scope.fmt.url;
 							var len = inner.length;
 							var at = -1;
 							for (var k = 0; k <= 256 && at < 0; k++) {
@@ -1327,32 +1364,49 @@
 							if (at < 0) {
 								return { ok: false, stage: "fmt-inner" };
 							}
-							p.GetRange(at, at + len).AddHyperlink({ sLink: url, sTooltip: url });
-							// v0.1.3: in some web builds (TrueConf cloud DS)
-							// AddHyperlink is silently ignored because the
-							// sandbox selection flag it requires never
-							// becomes true — verify and log instead of
-							// pretending the link was created.
-							var made = false;
-							try {
-								var j = JSON.stringify(p.ToJSON());
-								made = j.toLowerCase().indexOf("hyperlink") >= 0;
-							} catch (e) {
-								/* cannot verify */
-							}
-							return { ok: true, count: 0, linkMade: made };
+							p.GetRange(at, at + len).Select();
+							return { ok: true };
 						} catch (e) {
 							return { ok: false, error: e.message };
 						}
-					}), function (res2) {
-						if (res2 && res2.stage) {
-							dbg("link fmt skip: " + res2.stage);
-						} else if (res2 && res2.error) {
-							dbg("link fmt error: " + res2.error);
-						} else if (res2 && res2.ok && res2.linkMade === false) {
-							dbg("link fmt: SDK ignored AddHyperlink (no hyperlink in the model)");
+					}), function (resA) {
+						if (!resA || !resA.ok) {
+							dbg("link select skip: " + (resA && (resA.stage || resA.error) || "?"));
+							reReadAndContinue({ targetIndex: Asc.scope.targetIndex });
+							return;
 						}
-						reReadAndContinue({ targetIndex: Asc.scope.targetIndex });
+						var esc = function (s) {
+							return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+						};
+						var href = esc(res.url).replace(/"/g, "&quot;");
+						var html = '<a href="' + href + '">' + esc(item.inner) + "</a>";
+						window.Asc.plugin.executeMethod("PasteHtml", [html], function () {
+							callCommand(buildCommand(function () {
+								try {
+									var doc = Api.GetDocument();
+									var targetIndex = Asc.scope.fmt.targetIndex;
+									var p = targetIndex >= 0 ? doc.GetAllParagraphs()[targetIndex] : doc.GetCurrentParagraph();
+									if (!p) {
+										return { ok: false, stage: "paragraph" };
+									}
+									var made = false;
+									try {
+										var j = JSON.stringify(p.ToJSON());
+										made = j.toLowerCase().indexOf("hyperlink") >= 0;
+									} catch (e) {
+										/* cannot verify */
+									}
+									return { ok: true, count: 0, linkMade: made };
+								} catch (e) {
+									return { ok: false, error: e.message };
+								}
+							}), function (resB) {
+								if (resB && resB.ok && resB.linkMade === false) {
+									dbg("link fmt: no hyperlink in the model after PasteHtml");
+								}
+								reReadAndContinue({ targetIndex: Asc.scope.targetIndex });
+							});
+						});
 					});
 					return;
 				}
@@ -1617,7 +1671,7 @@
 								var paras = doc.GetAllParagraphs();
 								var out = [];
 								for (var i = 0; i < paras.length && i < 2000; i++) {
-									out.push(String(paras[i].GetText() || "").replace(/\r\n$/, ""));
+									out.push(String(paras[i].GetText() || "").replace(/[\r\n]+$/, ""));
 								}
 								return { ok: true, texts: out };
 							} catch (e) {
@@ -1862,8 +1916,9 @@
 						return;
 					}
 					if (res && res.ok && res.linkFormat) {
-						// v0.1.3: AddHyperlink needs its own command (it
-						// no-ops right after the marker deletes)
+						// v0.1.1: AddHyperlink no-ops inside callCommand (see
+						// the live-path comment) — select the span and paste
+						// an <a> fragment via PasteHtml from the plugin side.
 						Asc.scope.fmt = { inner: items[index].inner, url: res.url, i: items[index].i };
 						callCommand(buildCommand(function () {
 							try {
@@ -1889,27 +1944,49 @@
 								if (at < 0) {
 									return { ok: false, stage: "fmt-inner" };
 								}
-								p.GetRange(at, at + len).AddHyperlink({ sLink: fmt.url, sTooltip: fmt.url });
-								var made = false;
-								try {
-									var j = JSON.stringify(p.ToJSON());
-									made = j.toLowerCase().indexOf("hyperlink") >= 0;
-								} catch (e) {
-									/* cannot verify */
-								}
-								return { ok: true, count: 0, linkMade: made };
+								p.GetRange(at, at + len).Select();
+								return { ok: true };
 							} catch (e) {
 								return { ok: false, error: e.message };
 							}
-						}), function (res2) {
-							if (res2 && res2.stage) {
-								dbg("doc link fmt skip: " + res2.stage);
-							} else if (res2 && res2.error) {
-								dbg("doc link fmt error: " + res2.error);
-							} else if (res2 && res2.ok && res2.linkMade === false) {
-								dbg("doc link fmt: SDK ignored AddHyperlink");
+						}), function (resA) {
+							if (!resA || !resA.ok) {
+								dbg("doc link select skip: " + (resA && (resA.stage || resA.error) || "?"));
+								next(index + 1);
+								return;
 							}
-							next(index + 1);
+							var esc = function (s) {
+								return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+							};
+							var href = esc(res.url).replace(/"/g, "&quot;");
+							var html = '<a href="' + href + '">' + esc(items[index].inner) + "</a>";
+							window.Asc.plugin.executeMethod("PasteHtml", [html], function () {
+								callCommand(buildCommand(function () {
+									try {
+										var doc = Api.GetDocument();
+										var paras = doc.GetAllParagraphs();
+										var fmt = Asc.scope.fmt;
+										if (fmt.i < 0 || fmt.i >= paras.length) {
+											return { ok: false, stage: "fmt-index" };
+										}
+										var made = false;
+										try {
+											var j = JSON.stringify(paras[fmt.i].ToJSON());
+											made = j.toLowerCase().indexOf("hyperlink") >= 0;
+										} catch (e) {
+											/* cannot verify */
+										}
+										return { ok: true, count: 0, linkMade: made };
+									} catch (e) {
+										return { ok: false, error: e.message };
+									}
+								}), function (resB) {
+									if (resB && resB.ok && resB.linkMade === false) {
+										dbg("doc link fmt: no hyperlink in the model after PasteHtml");
+									}
+									next(index + 1);
+								});
+							});
 						});
 						return;
 					}

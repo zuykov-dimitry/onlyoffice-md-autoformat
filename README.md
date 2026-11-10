@@ -26,6 +26,10 @@ Shift+Enter (otherwise a trailing marker would stay forever). Until a trigger
 arrives the markers stay untouched: `**bold**` at the end of a line with no
 trailing space is left as is.
 
+After a conversion the text you type next continues with the SURROUNDING
+text's format, not the converted span's (Google-Docs-style): «**test** »
+converts to a bold «test», and what you type after it is plain.
+
 Lists (`- `, `1. `) are deliberately not duplicated: the editor's built-in
 AutoFormat already creates bulleted lists from `- `/`* ` and numbered lists
 from `1. `/`1) `. The plugin does not touch lists and works inside list items.
@@ -101,7 +105,7 @@ The plugin touches only the paragraph under the local user's cursor, makes the
 conversion idempotent (markers disappear) and rate-limits itself. Every
 participant toggles their own plugin independently.
 
-## Limitations (0.1.0)
+## Limitations (0.1.1)
 
 - the engine lives in the plugin window: after reopening the document the
   plugin must be opened again (background autostart is on the roadmap);
@@ -113,11 +117,11 @@ participant toggles their own plugin independently.
 - markdown tables are not supported;
 - an unclosed code block (a single ` ``` ` without a pair) stays as text;
   lines like ` ``` text` (marker + text on the same line) are not touched;
-- `[text](url)` links convert the text (brackets removed), but the hyperlink
-  itself is NOT created in TrueConf's web build of OnlyOffice: the sandboxed
-  `AddHyperlink` requires a visual-selection flag the plugin cannot set — the
-  SDK silently ignores the call (the engine checks the model and logs
-  «SDK ignored AddHyperlink»). Desktop builds may behave differently.
+- `[text](url)` links are created by selecting the converted span and pasting
+  an `<a>` fragment over it (the SDK's `AddHyperlink` silently no-ops inside
+  the plugin sandbox — verified on ONLYOFFICE Docs 10.0.2). In builds that
+  restrict `PasteHtml` the text still converts, but the hyperlink may not
+  appear (the engine logs it).
 
 ## Development
 
