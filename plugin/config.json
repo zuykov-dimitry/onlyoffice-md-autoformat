@@ -4,7 +4,7 @@
     "ru": "Markdown-автоформат"
   },
   "guid": "asc.{114F28ED-672A-4640-A6B2-8ED0E9D242CB}",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minVersion": "9.0.0",
   "variations": [
     {
@@ -21,7 +21,7 @@
       "isInsideMode": true,
       "isUpdateOleOnResize": false,
       "initDataType": "none",
-      "events": ["onParagraphText"],
+      "events": ["onParagraphText", "onContextMenuShow", "onContextMenuClick"],
       "store": {
         "background": {
           "light": "#1E2A32",

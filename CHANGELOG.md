@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.2.1
+
+* Fixed: the «Paste from Markdown» item never appeared in the editor's context
+  menu. Root cause (verified live on the desktop build 10.0.2): the item can
+  only be added while the editor's context-menu barrier is active, i.e. inside
+  the `onContextMenuShow` event, and that event is only delivered to plugins
+  registered via `attachEditorEvent` (or the config `events` array) — a plain
+  `attachEvent` never reaches the editor. The click event is gated by the same
+  registration; the item is now a leaf entry (an `items: []` field rendered a
+  submenu arrow that swallowed the click).
+* The context menu item appears when the plugin window is running; the same
+  command is always available from the plugin window (Insert Markdown tab).
+
 ## 0.2.0
 
 * New: **Paste from Markdown**. Right-click in the document → «Paste from

@@ -64,21 +64,50 @@
 			// answerable at a glance
 			var versionEl = document.getElementById("plugin-version");
 			if (versionEl) {
-				versionEl.textContent = "v" + (window.Asc.plugin.info.version || "0.2.0");
+				versionEl.textContent = "v" + (window.Asc.plugin.info.version || "0.2.1");
 			}
 			// localize the v0.2.0 Insert Markdown view
 			insertBtn.textContent = L.insert;
 			mdFileLabel.textContent = L.openFile;
 			insertBack.textContent = L.back;
 			mdInput.placeholder = L.placeholder;
-			// v0.2.0: "Paste from Markdown" in the editor context menu. The
-			// item id doubles as the event name for attachContextMenuClickEvent.
+			// v0.2.1: "Paste from Markdown" in the editor context menu.
+			//
+			// The protocol (verified live on the desktop build 10.0.2 and against
+			// upstream sdkjs sources): the editor pushes onContextMenuShow ONLY
+			// to plugins registered in its eventsMap, which is populated by the
+			// config `events` array or by attachEditorEvent. Plain attachEvent
+			// never notifies the editor. AddContextMenuItem must be called
+			// INSIDE the onContextMenuShow handler — at any other time the
+			// editor's context-menu barrier does not exist and the call is a
+			// silent no-op. The item itself must be a LEAF: `items: []` renders
+			// a submenu arrow and the click opens an empty submenu instead of
+			// firing (verified live).
 			try {
-				if (typeof window.Asc.plugin.executeMethod === "function") {
-					window.Asc.plugin.executeMethod("AddContextMenuItem", [{
-						guid: window.Asc.plugin.guid,
-						items: [{ id: "onPasteMarkdownClick", text: L.menuItem, items: [] }]
-					}]);
+				if (typeof window.Asc.plugin.attachEditorEvent === "function") {
+					var menuItemPayload = function () {
+						return [{
+							guid: window.Asc.plugin.guid,
+							items: [{ id: "onPasteMarkdownClick", text: L.menuItem }]
+						}];
+					};
+					window.Asc.plugin.attachEditorEvent("onContextMenuShow", function () {
+						try {
+							window.Asc.plugin.executeMethod("AddContextMenuItem", menuItemPayload());
+						} catch (e) { /* the context menu is optional */ }
+					});
+					// The click event is gated by the same eventsMap: without
+					// registering onContextMenuClick the editor routes the click
+					// but never delivers it (verified live). attachEditorEvent
+					// replaces the SDK's built-in event_onContextMenuClick, so
+					// keep the original dispatch alive — it is what runs the
+					// attachContextMenuClickEvent handlers.
+					var builtinClick = window.Asc.plugin.event_onContextMenuClick;
+					window.Asc.plugin.attachEditorEvent("onContextMenuClick", function (data) {
+						if (builtinClick) {
+							builtinClick.call(window.Asc.plugin, data);
+						}
+					});
 				}
 				if (typeof window.Asc.plugin.attachContextMenuClickEvent === "function") {
 					window.Asc.plugin.attachContextMenuClickEvent("onPasteMarkdownClick", function () {
@@ -104,7 +133,7 @@
 		// window chrome cannot deliver for).
 		aboutBtn.addEventListener("click", function () {
 			var isRu = /[?&]lang=ru/.test(window.location.search || "");
-			var v = (window.Asc.plugin.info && window.Asc.plugin.info.version) || "0.2.0";
+			var v = (window.Asc.plugin.info && window.Asc.plugin.info.version) || "0.2.1";
 			document.getElementById("about-title").textContent = isRu
 				? "Markdown-автоформат"
 				: "Markdown autoformat";

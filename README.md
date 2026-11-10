@@ -47,7 +47,13 @@ Powered by a vendored [markdown-it](https://github.com/markdown-it/markdown-it)
 (MIT, works offline); raw HTML in the source Markdown is disabled for safety.
 A 270 KB changelog with a 640-row table and 636 links inserts in seconds.
 The context menu position is chosen by the editor (plugin items are grouped);
-the same command is always available from the plugin window.
+the item appears while the plugin window is running (open it once from the
+Plugins tab — the window can be minimised, the engine keeps running). The same
+command is always available from the plugin window.
+
+Typing tip: the inline conversion triggers on the SPACE typed after the closing
+marker (`*new again* ` → *new again* followed by a space), and on Enter after a
+heading or fence marker.
 
 Lists (`- `, `1. `) are deliberately not duplicated: the editor's built-in
 AutoFormat already creates bulleted lists from `- `/`* ` and numbered lists
